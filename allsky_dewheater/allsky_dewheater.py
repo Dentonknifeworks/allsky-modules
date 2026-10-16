@@ -1466,21 +1466,26 @@ class ALLSKYDEWHEATER(ALLSKYMODULEBASE):
 				'Select "Allsky" and the temperature and humidity variables, '
 				'e.g. AS_TEMP/AS_HUMIDITY from the Environment module or AS_OWTEMP/AS_OWHUMIDITY from Open Weather Map.')
 
-		if temperature is not None and humidity is not None:
-			the_dew_point = dew_point(temperature, humidity).c
-			the_heat_index = heat_index(temperature, humidity).c
-
+				if temperature is not None and humidity is not None:
 			tempUnits = allsky_shared.get_setting('temptype')
+
 			if tempUnits == 'F':
-				temperature = (temperature * (9/5)) + 32
-				the_dew_point = (the_dew_point * (9/5)) + 32
-				the_heat_index = (the_heat_index * (9/5)) + 32
-				self.log(4, 'INFO: Converted temperature to F')
+				temp_c = (temperature - 32) * 5 / 9
+			else:
+				temp_c = temperature
+
+			the_dew_point = dew_point(temp_c, humidity).c
+			the_heat_index = heat_index(temp_c, humidity).c
+
+			if tempUnits == 'F':
+				the_dew_point = round((the_dew_point * 9 / 5) + 32, 2)
+				the_heat_index = round((the_heat_index * 9 / 5) + 32, 2)
+			else:
+				the_dew_point = round(the_dew_point, 2)
+				the_heat_index = round(the_heat_index, 2)
 
 			temperature = round(temperature, 2)
 			humidity = round(humidity, 2)
-			the_dew_point = round(the_dew_point, 2)
-			the_heat_index = round(the_heat_index, 2)
 
 		return temperature, humidity, the_dew_point, the_heat_index, pressure, rel_humidity, altitude
 
