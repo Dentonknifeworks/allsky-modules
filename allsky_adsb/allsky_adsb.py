@@ -449,7 +449,7 @@ class ALLSKYADSB(ALLSKYMODULEBASE):
 				{
 					"author": "Benjamin Hartwich (Agent assisted)",
 					"authorurl": "https://github.com/benhartwich/",
-					"changes": "A data source that can't be reached is a warning; only 3 failures in a row become a WebUI error. A wrong local URL is still reported right away. An unreachable local receiver no longer ends in \"adsb failed on line ...\""
+					"changes": "A data source that can't be reached is a warning; only 3 failures in a row become a WebUI error. A wrong local URL is still reported right away. An unreachable local receiver no longer breaks the module."
 				}
 			]      
 		}
@@ -490,7 +490,17 @@ class ALLSKYADSB(ALLSKYMODULEBASE):
 
 					if 'ias' in aircraft:
 						if 'lat' in aircraft:
-							aircraft_pos = (float(aircraft['lat']), float(aircraft['lon']), self._feet_to_meters(int(aircraft['alt_baro'])))
+							if aircraft.get('alt_baro') in (None, 'ground'):
+								self.__add_warning('ground', aircraft['flight'].rstrip())
+								continue
+
+							try:
+								aircraft_altitude = self._feet_to_meters(float(aircraft['alt_baro']))
+							except (TypeError, ValueError):
+								self.__add_warning('altitude', aircraft['flight'].rstrip())
+								continue
+
+							aircraft_pos = (float(aircraft['lat']), float(aircraft['lon']), aircraft_altitude)
 							aircraft_azimuth, aircraft_elevation, aircraft_distance, slant_distance = self._look_angle(aircraft_pos, observer_location)
 
 							found_aircraft[aircraft['hex']] = {
@@ -559,7 +569,18 @@ class ALLSKYADSB(ALLSKYMODULEBASE):
 						if 'alt_baro' in aircraft:
 							if aircraft['alt_baro'] != 'ground':
 
-								aircraft_pos = (float(aircraft['lat']), float(aircraft['lon']), int(self._feet_to_meters(aircraft['alt_baro'])))
+								try:
+									aircraft_altitude = self._feet_to_meters(float(aircraft['alt_baro']))
+								except (TypeError, ValueError):
+									code = "Unknown"
+									if "flight" in aircraft:
+										code = aircraft['flight'].rstrip()
+									if "hex" in aircraft:
+										code = aircraft['hex'].rstrip()
+									self.__add_warning('altitude', code)
+									continue
+
+								aircraft_pos = (float(aircraft['lat']), float(aircraft['lon']), aircraft_altitude)
 								aircraft_azimuth, aircraft_elevation, aircraft_distance, slant_distance = self._look_angle(aircraft_pos, observer_location)
 
 								icao = aircraft['hex']
@@ -721,7 +742,13 @@ class ALLSKYADSB(ALLSKYMODULEBASE):
 						if 'alt_baro' in aircraft:
 							if aircraft['alt_baro'] != 'ground':
 
-								aircraft_pos = (float(aircraft['lat']), float(aircraft['lon']), int(self._feet_to_meters(aircraft['alt_baro'])))
+								try:
+									aircraft_altitude = self._feet_to_meters(float(aircraft['alt_baro']))
+								except (TypeError, ValueError):
+									self.__add_warning('altitude', aircraft['flight'].rstrip())
+									continue
+
+								aircraft_pos = (float(aircraft['lat']), float(aircraft['lon']), aircraft_altitude)
 								aircraft_azimuth, aircraft_elevation, aircraft_distance, slant_distance = self._look_angle(aircraft_pos, observer_location)
 
 								icao = aircraft['hex']
@@ -1020,7 +1047,7 @@ class ALLSKYADSB(ALLSKYMODULEBASE):
 									extra_data[f'AS_MANUFACTURER_AIRCRAFT{counter}'] = aircraft['info']['Manufacturer']
 									extra_data[f'AS_MILITARY_AIRCRAFT{counter}'] = aircraft['info']['Military']
 									extra_data[f'AS_TEXT_AIRCRAFT{counter}'] = f"{aircraft['flight'].strip()} {aircraft['azimuth']:.0f}°"
-									extra_data[f'AS_LONGTEXT_AIRCRAFT{counter}'] = f"{aircraft['flight'].strip()} {aircraft['info']['Type']} {aircraft['azimuth']:.0f}° {aircraft['distance_miles']:.0f}Miles {aircraft['altitude']}  {aircraft['ias']}kts"
+									extra_data[f'AS_LONGTEXT_AIRCRAFT{counter}'] = f"{aircraft['flight'].strip()} {aircraft['info']['Type']} {aircraft['azimuth']:.0f}° {aircraft['distance_miles']:.0f}Miles {aircraft['altitude']}"
 									extra_data[f'AS_SHORT_ROUTE_AIRCRAFT{counter}'] = aircraft['route']['short_route']
 									extra_data[f'AS_MEDIUM_ROUTE_AIRCRAFT{counter}'] = aircraft['route']['medium_route']
 									extra_data[f'AS_LONG_ROUTE_AIRCRAFT{counter}'] = aircraft['route']['long_route']
